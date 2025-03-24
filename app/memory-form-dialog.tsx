@@ -43,21 +43,27 @@ export default function MemoryFormDialog() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Create a new memory
-    const newMemory: Memory = {
-      id: uuidv4(),
-      date: format(values.date, "yyyy-MM-dd"),
-      title: values.title,
-      description: values.description,
-      type: "image",
-      location: values.location || undefined,
-    };
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      const res = await fetch("/api/memories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: format(values.date, "yyyy-MM-dd"),
+          title: values.title,
+          description: values.description,
+          location: values.location,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to create memory");
+      }
+      const data = await res.json();
+      console.log("Created memory:", data.memory);
+    } catch (err) {
+      console.error("Error:", err);
+    }
 
-    // Here you would typically add this to your data store
-    console.log("New memory:", newMemory);
-
-    // Close the dialog and reset the form
     setOpen(false);
     form.reset();
   }
