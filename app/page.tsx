@@ -1,101 +1,203 @@
-import Image from "next/image";
+//page.tsx
+"use client";
+import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import Lenis from "@studio-freight/lenis";
+import { daysData } from "./data";
+import Memory from "./Memory";
 
-export default function Home() {
+interface BarPosition {
+  centerX: number;
+}
+
+const MEMORY_OFFSET_Y = "23rem";
+const TOTAL_DAYS = 365;
+
+export default function LinesRow() {
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number>(-1);
+  const [barPositions, setBarPositions] = useState<BarPosition[] | null>(null);
+  const [circleIndex, setCircleIndex] = useState<number | null>(null);
+
+  const scrollWrapperRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
+  const barRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const allDays = Array.from({ length: TOTAL_DAYS }).map((_, i) => {
+    return (
+      daysData[i] ?? {
+        date: `2025-${(i % 12) + 1}-${(i % 28) + 1}`,
+        memories: [],
+      }
+    );
+  });
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const maxBarHeight = Math.max(...allDays.map((day) => day.memories.length * 25));
+
+  useEffect(() => {
+    const wrapper = scrollWrapperRef.current;
+    if (!wrapper || !wrapper.firstElementChild) return;
+
+    const lenis = new Lenis({
+      wrapper,
+      content: wrapper.firstElementChild as HTMLElement,
+      orientation: "horizontal",
+      duration: 3.0,
+      wheelMultiplier: 1.0,
+      smoothWheel: true,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+    });
+    lenisRef.current = lenis;
+
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+
+    const newPositions = barRefs.current.map((bar) => {
+      if (!bar) return { centerX: 0 };
+      const rect = bar.getBoundingClientRect();
+      const centerX = rect.left - containerRect.left + rect.width / 2;
+      return { centerX };
+    });
+
+    setBarPositions(newPositions);
+  }, [allDays.length]);
+
+  useEffect(() => {
+    if (selectedIndex === null) {
+      setCircleIndex(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCircleIndex(selectedIndex);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [selectedIndex]);
+
+  const selectedDay = selectedIndex !== null && allDays[selectedIndex] ? allDays[selectedIndex] : null;
+
+  const hasValidMemories = selectedDay && selectedDay.memories.length > 0;
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div ref={scrollWrapperRef} className="fixed inset-0 flex items-end overflow-x-auto overflow-y-hidden px-16 pb-12">
+      {/* Vignette Effect */}
+      <div className="absolute inset-0 pointer-events-none z-[9999]">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, 0) 75%, rgba(0, 0, 0, 0.8) 100%)",
+          }}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      <div ref={containerRef} className="relative min-w-[4000px] ml-96 h-full overflow-visible">
+        {barPositions && selectedIndex !== null && allDays[selectedIndex].memories.length > 0 && (
+          <div
+            className="absolute transition-opacity duration-300 opacity-100"
+            style={{
+              pointerEvents: "none",
+              zIndex: 999,
+              left: barPositions[selectedIndex].centerX,
+              bottom: MEMORY_OFFSET_Y,
+              transform: "translateX(-50%)",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <Memory day={allDays[selectedIndex]} isSelected /> {/* Pass isSelected */}
+          </div>
+        )}
+
+        {/* Bars */}
+        <div className="absolute bottom-0 left-0 flex">
+          {allDays.map((day, i) => {
+            const isSelected = i === selectedIndex;
+            const distance = Math.abs(i - hoveredIndex);
+            const memoryCount = day.memories.length;
+            const baseHeight = memoryCount > 0 ? memoryCount * 11 : 2;
+
+            const scaleFactor = isSelected ? (baseHeight > 0 ? (maxBarHeight * 0.7) / baseHeight : 1) : distance === 0 ? 1.4 : distance === 1 ? 1.2 : distance === 2 ? 1.1 : 1;
+
+            let computedColor = "bg-zinc-800";
+            if (isSelected || (distance === 0 && hoveredIndex === i)) {
+              computedColor = "bg-white";
+            } else if (distance === 1) {
+              computedColor = "bg-zinc-400";
+            } else if (distance === 2) {
+              computedColor = "bg-zinc-600";
+            }
+
+            const showDateLabel = isSelected;
+            const showCircle = isSelected && memoryCount > 0;
+            const actualHeight = baseHeight * scaleFactor;
+
+            return (
+              <div
+                key={i}
+                ref={(el) => {
+                  barRefs.current[i] = el;
+                }}
+                onMouseEnter={() => setHoveredIndex(i)}
+                onMouseLeave={() => setHoveredIndex(-1)}
+                onClick={() => setSelectedIndex(isSelected ? null : i)}
+                className="relative flex items-end px-2 cursor-pointer overflow-visible"
+              >
+                <div
+                  className={`w-[2px] min-w-[2px] flex-shrink-0 origin-bottom transition-transform duration-200 ease-in-out ${isSelected ? "z-10" : ""} ${computedColor}`}
+                  style={{
+                    height: `${baseHeight}px`,
+                    transform: `translateZ(0) scaleX(1) scaleY(${scaleFactor})`,
+                  }}
+                />
+                {showCircle && (
+                  <div
+                    className={`absolute bg-white rounded-full transition-opacity duration-300 ease-in ${circleIndex === i ? "opacity-100" : "opacity-0"}`}
+                    style={{
+                      width: "8px",
+                      height: "8px",
+                      left: "50%",
+                      bottom: `${actualHeight}px`,
+                      transform: "translateX(-50%)",
+                    }}
+                  />
+                )}
+                {showDateLabel && (
+                  <div
+                    className={`absolute text-white text-sm whitespace-nowrap transition-all duration-300 ease-in-out ${
+                      circleIndex === i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                    }`}
+                    style={{
+                      left: "50%",
+                      bottom: `-${32}px`,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    {formatDate(day.date)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
   );
 }
