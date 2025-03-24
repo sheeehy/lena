@@ -1,9 +1,9 @@
-// app/LinesRow.tsx (or wherever it's defined)
-"use client"; // It's a client component
+"use client";
 
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Lenis from "@studio-freight/lenis";
 import Memory from "./Memory";
+import { format } from "date-fns"; // <-- Import date-fns
 
 export interface Memory {
   id: string;
@@ -15,26 +15,25 @@ export interface Memory {
 }
 
 interface DayData {
-  date: string;
+  date: string; // e.g. "2025-03-03"
   memories: Memory[];
 }
 
 interface LinesRowProps {
-  daysData: DayData[]; // 365 elements
+  daysData: DayData[];
 }
 
 const MEMORY_OFFSET_Y = "23rem";
 
 export default function LinesRow({ daysData }: LinesRowProps) {
-  const TOTAL_DAYS = daysData.length; // should be 365
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number>(-1);
   const [circleIndex, setCircleIndex] = useState<number | null>(null);
 
-  // for measuring bar positions
   interface BarPosition {
     centerX: number;
   }
+
   const [barPositions, setBarPositions] = useState<BarPosition[] | null>(null);
 
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
@@ -90,18 +89,18 @@ export default function LinesRow({ daysData }: LinesRowProps) {
       setCircleIndex(null);
       return;
     }
-    const timer = setTimeout(() => setCircleIndex(selectedIndex), 0);
+    const timer = setTimeout(() => {
+      setCircleIndex(selectedIndex);
+    }, 0);
     return () => clearTimeout(timer);
   }, [selectedIndex]);
 
-  // 4) figure out max bar height (like your old logic)
+  // 4) Max bar height
   const maxBarHeight = Math.max(...daysData.map((day) => day.memories.length * 25));
 
   return (
     <div ref={scrollWrapperRef} className="fixed inset-0 flex items-end overflow-x-auto overflow-y-hidden px-16 pb-12">
-      {/* Vignette etc. if you want */}
       <div ref={containerRef} className="relative min-w-[4000px] ml-96 h-full overflow-visible">
-        {/* Memory Display */}
         {barPositions && selectedIndex !== null && daysData[selectedIndex].memories.length > 0 && (
           <div
             className="absolute transition-opacity duration-300 opacity-100"
@@ -117,7 +116,6 @@ export default function LinesRow({ daysData }: LinesRowProps) {
           </div>
         )}
 
-        {/* Bars */}
         <div className="absolute bottom-0 left-0 flex">
           {daysData.map((day, i) => {
             const isSelected = i === selectedIndex;
@@ -157,6 +155,8 @@ export default function LinesRow({ daysData }: LinesRowProps) {
                     transform: `translateZ(0) scaleX(1) scaleY(${scaleFactor})`,
                   }}
                 />
+
+                {/* Circle if selected */}
                 {showCircle && (
                   <div
                     className={`absolute bg-white rounded-full transition-opacity duration-300 ease-in ${circleIndex === i ? "opacity-100" : "opacity-0"}`}
@@ -168,6 +168,23 @@ export default function LinesRow({ daysData }: LinesRowProps) {
                       transform: "translateX(-50%)",
                     }}
                   />
+                )}
+
+                {/* DATE LABEL BELOW THE SELECTED BAR (formatted as "March 3") */}
+                {isSelected && (
+                  <div
+                    className={`absolute text-white text-sm whitespace-nowrap transition-all duration-300 ease-in-out ${
+                      circleIndex === i ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                    }`}
+                    style={{
+                      left: "50%",
+                      bottom: "-32px",
+                      transform: "translateX(-50%)",
+                      zIndex: 9999,
+                    }}
+                  >
+                    {format(new Date(day.date), "MMMM d")}
+                  </div>
                 )}
               </div>
             );
