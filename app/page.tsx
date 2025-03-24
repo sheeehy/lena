@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 import LinesRow from "./LinesRow";
 import { format } from "date-fns";
 
+export const revalidate = 0;
+
 export interface Memory {
   id: string;
   date: string;
