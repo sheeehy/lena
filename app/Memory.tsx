@@ -72,7 +72,11 @@ export default function Memory({ day, isSelected }: MemoryProps) {
           backgroundColor: "#333",
         }}
       >
-        {memory?.type === "image" && <img src={memory.id} alt={memory.title} className="absolute inset-0 m-auto w-full h-full object-cover" />}
+        {memory?.image ? (
+          <img src={memory.image} alt={memory.title} className="absolute inset-0 m-auto w-full h-full object-cover" />
+        ) : (
+          <div className="text-zinc-500 flex items-center justify-center h-full w-full">No image</div>
+        )}
       </div>
 
       {/* Memory text info */}

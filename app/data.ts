@@ -1,12 +1,13 @@
 // data.ts
 
 export interface Memory {
-  id: string;
-  date: string;
+  id: string;       // primary key or any ID
+  date: string;     // e.g. "2025-03-01"
   title: string;
   description: string;
-  type: "image";
+  type: "image";    // or another type if you'd like
   location?: string;
+  image?: string;   // <-- new field for the image URL
 }
 
 export interface DayData {
@@ -14,17 +15,3 @@ export interface DayData {
   memories: Memory[];
 }
 
-const makeMemory = (
-  date: string,
-  image: string,
-  title: string,
-  description: string,
-  location?: string
-): Memory => ({
-  id: image,
-  date,
-  title,
-  description,
-  type: "image",
-  location,
-});
