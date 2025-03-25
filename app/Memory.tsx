@@ -1,14 +1,14 @@
-//memory.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
+import Image from "next/image";
 import type { DayData, Memory } from "./data";
 import MemoryFormDialog from "./memory-form-dialog";
 
 interface MemoryProps {
   day: DayData;
-  isSelected?: boolean; // We'll accept a prop that indicates if this day is the selected day
+  isSelected?: boolean;
 }
 
 export default function Memory({ day, isSelected }: MemoryProps) {
@@ -18,7 +18,6 @@ export default function Memory({ day, isSelected }: MemoryProps) {
   const [selectedMemoryIndex, setSelectedMemoryIndex] = useState(0);
   const hasMemories = day.memories.length > 0;
 
-  // Reset to first memory whenever day changes
   useEffect(() => {
     setSelectedMemoryIndex(0);
   }, [day]);
@@ -27,7 +26,6 @@ export default function Memory({ day, isSelected }: MemoryProps) {
 
   return (
     <div className="relative" style={{ width: `${containerWidth}px` }}>
-      {/* If we have memories, show the memory nav row */}
       {hasMemories && (
         <div
           className="flex space-x-3 text-white absolute z-10"
@@ -37,7 +35,6 @@ export default function Memory({ day, isSelected }: MemoryProps) {
             top: `calc(50% - ${squareSize / 2}px - 2rem)`,
           }}
         >
-          {/* [1], [2], etc. */}
           {day.memories.map((_, idx) => (
             <div
               key={idx}
@@ -46,20 +43,24 @@ export default function Memory({ day, isSelected }: MemoryProps) {
                 idx === selectedMemoryIndex ? "text-white opacity-100" : "text-zinc-500 opacity-80 hover:opacity-100"
               }`}
             >
-              [{idx + 1}]
+              {idx + 1}
             </div>
           ))}
 
-          {/* Show the plus icon if this day is selected */}
           {isSelected && (
             <div className="ml-2">
-              <MemoryFormDialog />
+              <MemoryFormDialog
+                trigger={
+                  <button className="text-zinc-600  hover:text-white transition-all duration-200 ease-out flex items-center ">
+                    <Plus className="h-4 w-4 cursor-pointer mt-1" />
+                  </button>
+                }
+              />
             </div>
           )}
         </div>
       )}
 
-      {/* The image bounding box */}
       <div
         className="pointer-events-none relative overflow-hidden"
         style={{
@@ -73,13 +74,14 @@ export default function Memory({ day, isSelected }: MemoryProps) {
         }}
       >
         {memory?.image ? (
-          <img src={memory.image} alt={memory.title} className="absolute inset-0 m-auto w-full h-full object-cover" />
+          <div className="relative w-full h-full">
+            <Image src={memory.image || "/placeholder.svg"} alt={memory.title} fill sizes="400px" priority={selectedMemoryIndex === 0} className="object-cover" quality={85} />
+          </div>
         ) : (
           <div className="text-zinc-500 flex items-center justify-center h-full w-full">No image</div>
         )}
       </div>
 
-      {/* Memory text info */}
       <div
         className="bg-black text-white p-4 flex flex-col justify-start pointer-events-none"
         style={{
