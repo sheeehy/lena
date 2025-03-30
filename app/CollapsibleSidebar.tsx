@@ -26,7 +26,7 @@ export function CollapsibleSidebar() {
       setCollapsed(true);
       setProfileOpen(false);
       setYearsOpen(false);
-    }, 150);
+    }, 50);
   };
 
   return (
@@ -86,7 +86,7 @@ export function CollapsibleSidebar() {
 
         <div className="px-4 py-2">
           <button
-            className={`cursor-pointer flex items-center rounded-md bg-black text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
+            className={`cursor-pointer flex items-center rounded-md bg-zinc-950 text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
               collapsed ? "w-8 h-8" : "w-full h-8 "
             }`}
           >
@@ -107,7 +107,7 @@ export function CollapsibleSidebar() {
           <MemoryFormDialog
             trigger={
               <button
-                className={`cursor-pointer flex items-center rounded-md bg-black text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
+                className={`cursor-pointer flex items-center rounded-md bg-zinc-950 text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
                   collapsed ? "w-8 h-8" : "w-full h-8 "
                 }`}
               >
@@ -132,7 +132,7 @@ export function CollapsibleSidebar() {
               onClick={() => {
                 if (!collapsed) setYearsOpen(!yearsOpen);
               }}
-              className={`cursor-pointer flex items-center rounded-md bg-black text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
+              className={`cursor-pointer flex items-center rounded-md bg-zinc-950 text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
                 collapsed ? "w-8 h-8" : "w-full h-8 "
               }`}
             >
