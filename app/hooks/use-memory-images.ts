@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { preloadImage, isImagePreloaded } from "../utils/image-preloader"
-import type { Memory } from "../types"
+import type { Memory } from "../types/types"
 
 export function useMemoryImages(memories: Memory[], selectedIndex: number) {
   const [isLoading, setIsLoading] = useState(true)

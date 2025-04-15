@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import LinesRow from "./LinesRow";
-import { useMemories } from "./memory-context";
-import { useYear } from "./year-context";
+import LinesRow from "./components/LinesRow";
+import { useMemories } from "@/app/context/memory-context";
+import { useYear } from "@/app/context/year-context";
 
 export default function Home() {
   const { daysData, version } = useMemories();

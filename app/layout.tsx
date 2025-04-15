@@ -1,12 +1,12 @@
 import type React from "react";
-import { MemoryProvider } from "@/app/memory-context";
+import { MemoryProvider } from "@/app/context/memory-context";
 import type { Metadata } from "next";
-import { MemoryDialogProvider } from "./memory-dialog-provider";
-import { YearProvider } from "./year-context";
+import { MemoryDialogProvider } from "@/app/context/memory-dialog-provider";
+import { YearProvider } from "@/app/context/year-context";
 import "./globals.css";
 import { Inter } from "next/font/google";
 
-import { CollapsibleSidebar } from "./CollapsibleSidebar";
+import { CollapsibleSidebar } from "./components/CollapsibleSidebar";
 
 const inter = Inter({
   subsets: ["latin"],

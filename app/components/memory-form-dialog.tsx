@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUpToLine, PlusIcon, ChevronRight, AlertCircle, Check, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Memory } from "./types";
-import { useMemories } from "./memory-context";
-import { useMemoryDialog } from "./memory-dialog-provider";
+import type { Memory } from "../types/types";
+import { useMemories } from "../context/memory-context";
+import { useMemoryDialog } from "../context/memory-dialog-provider";
 
 const THEME = {
   bgPrimary: "bg-zinc-950",

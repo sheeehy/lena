@@ -3,7 +3,7 @@
 import type React from "react";
 import { createContext, useContext, useEffect, useCallback, useReducer } from "react";
 import { format, addDays } from "date-fns";
-import type { DayData, Memory } from "./types";
+import type { DayData, Memory } from "@/app/types/types";
 
 // Add a reducer to ensure state updates are properly detected
 type MemoryAction = { type: "SET_DAYS_DATA"; payload: DayData[] } | { type: "ADD_MEMORY"; payload: Memory } | { type: "SET_LOADING"; payload: boolean };

@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import Lenis from "@studio-freight/lenis";
 import Memory from "./Memory";
 import { format } from "date-fns";
-import { useMemories } from "./memory-context";
-import { useYear } from "./year-context";
-import type { DayData } from "./types";
+import { useMemories } from "@/app/context/memory-context";
+import { useYear } from "@/app/context/year-context";
+import type { DayData } from "../types/types";
 import { stagger, useAnimate } from "framer-motion";
 
 interface LinesRowProps {

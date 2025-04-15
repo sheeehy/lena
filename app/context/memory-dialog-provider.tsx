@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { Dialog } from "@/components/ui/dialog";
-import MemoryFormDialog from "./memory-form-dialog";
+import MemoryFormDialog from "@/app/components/memory-form-dialog";
 
 // Create a context to manage the dialog state
 interface MemoryDialogContextType {

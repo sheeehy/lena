@@ -5,8 +5,8 @@
 import { useState, useEffect } from "react";
 import { MapPin, Plus } from "lucide-react";
 import Image from "next/image";
-import type { DayData } from "./types";
-import { useMemoryDialog } from "./memory-dialog-provider";
+import type { DayData } from "../types/types";
+import { useMemoryDialog } from "@/app/context/memory-dialog-provider";
 
 interface MemoryProps {
   day: DayData;

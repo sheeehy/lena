@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import { Calendar, ChevronDown, LogOut, Search, Settings, User, ArrowDownUp, Plus } from "lucide-react";
-import { useMemoryDialog } from "./memory-dialog-provider";
-import { useYear } from "./year-context";
-import { useMemories } from "./memory-context";
+import { useMemoryDialog } from "@/app/context/memory-dialog-provider";
+import { useYear } from "@/app/context/year-context";
+import { useMemories } from "@/app/context/memory-context";
 
 export function CollapsibleSidebar() {
   // Initialize dialog context outside the try-catch to ensure hook is always called
