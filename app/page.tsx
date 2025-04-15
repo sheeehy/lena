@@ -1,57 +1,35 @@
-import { supabase } from "@/lib/supabase";
+"use client";
+
+import { useEffect, useState } from "react";
 import LinesRow from "./LinesRow";
-import { format } from "date-fns";
+import { useMemories } from "./memory-context";
+import { useYear } from "./year-context";
 
-export const revalidate = 0;
+export default function Home() {
+  const { daysData, version } = useMemories();
+  const { selectedYear } = useYear();
+  const [key, setKey] = useState(`linesrow-${selectedYear}-initial`);
 
-export interface Memory {
-  id: string; // primary key or any ID
-  date: string; // e.g. "2025-03-01"
-  title: string;
-  description: string;
-  type: "image"; // or another type if you'd like
-  location?: string;
-  image?: string; // <-- new field for the image URL
-}
-
-interface DayData {
-  date: string;
-  memories: Memory[];
-}
-
-export default async function HomePage() {
-  const { data: dbMemories, error } = await supabase.from("memories").select("*").gte("date", "2025-01-01").lte("date", "2025-12-31");
-
-  if (error) {
-    console.error("Supabase fetch error:", error);
-    return <div>Failed to load memories</div>;
-  }
-
-  const memoryMap: Record<string, Memory[]> = {};
-
-  dbMemories?.forEach((mem) => {
-    // e.g. "2025-03-01T00:00:00.000Z" => "2025-03-01"
-    const dayString = format(new Date(mem.date), "yyyy-MM-dd");
-    if (!memoryMap[dayString]) {
-      memoryMap[dayString] = [];
-    }
-    memoryMap[dayString].push(mem);
+  // Filter days data by selected year
+  const filteredDaysData = daysData.filter((day) => {
+    return day.date.startsWith(selectedYear);
   });
 
-  const daysInYear: DayData[] = [];
-  const startOfYear = new Date("2025-01-01");
-  for (let i = 0; i < 365; i++) {
-    const currentDate = new Date(startOfYear);
-    currentDate.setDate(startOfYear.getDate() + i);
+  // Update key when year changes to force remount
+  useEffect(() => {
+    setKey(`linesrow-${selectedYear}-${Date.now()}`);
+  }, [selectedYear]);
 
-    const dayKey = format(currentDate, "yyyy-MM-dd");
-    const memoriesForDay = memoryMap[dayKey] || [];
+  // Debug log when filtered data changes
+  useEffect(() => {
+    console.log(`Filtered days for year ${selectedYear}:`, filteredDaysData.length);
+    console.log(`Days with memories:`, filteredDaysData.filter((day) => day.memories.length > 0).length);
+    console.log("Memory context version:", version);
+  }, [filteredDaysData, selectedYear, version]);
 
-    daysInYear.push({
-      date: dayKey,
-      memories: memoriesForDay,
-    });
-  }
-
-  return <LinesRow daysData={daysInYear} />;
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-black">
+      <LinesRow key={key} daysData={filteredDaysData} />
+    </main>
+  );
 }

@@ -1,10 +1,12 @@
+// Memory.tsx
+
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { MapPin, Plus } from "lucide-react";
 import Image from "next/image";
-import type { DayData, Memory } from "./data";
-import MemoryFormDialog from "./memory-form-dialog";
+import type { DayData } from "./types";
+import { useMemoryDialog } from "./memory-dialog-provider";
 
 interface MemoryProps {
   day: DayData;
@@ -12,6 +14,7 @@ interface MemoryProps {
 }
 
 export default function Memory({ day, isSelected }: MemoryProps) {
+  const { openDialog } = useMemoryDialog();
   const containerWidth = 800;
   const squareSize = 400;
 
@@ -49,13 +52,9 @@ export default function Memory({ day, isSelected }: MemoryProps) {
 
           {isSelected && (
             <div className="ml-2">
-              <MemoryFormDialog
-                trigger={
-                  <button className="text-zinc-600  hover:text-white transition-all duration-200 ease-out flex items-center ">
-                    <Plus className="h-4 w-4 cursor-pointer mt-1" />
-                  </button>
-                }
-              />
+              <button onClick={openDialog} className="text-zinc-600 hover:text-white transition-all duration-200 ease-out flex items-center">
+                <Plus className="h-4 w-4 cursor-pointer mt-1" />
+              </button>
             </div>
           )}
         </div>

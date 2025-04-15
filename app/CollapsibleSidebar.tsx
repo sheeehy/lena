@@ -1,18 +1,41 @@
-// CollapsibleSidebar.tsx
-
 "use client";
+
 import * as React from "react";
 import { Calendar, ChevronDown, LogOut, Search, Settings, User, ArrowDownUp, Plus } from "lucide-react";
-import MemoryFormDialog from "./memory-form-dialog";
+import { useMemoryDialog } from "./memory-dialog-provider";
+import { useYear } from "./year-context";
+import { useMemories } from "./memory-context";
 
 export function CollapsibleSidebar() {
+  // Initialize dialog context outside the try-catch to ensure hook is always called
+  const dialogContext = useMemoryDialog();
+  const { openDialog } = dialogContext;
+  const { selectedYear, setSelectedYear, yearsWithMemories } = useYear();
+  const { version } = useMemories();
+
   const [collapsed, setCollapsed] = React.useState(true);
-  const [selectedYear, setSelectedYear] = React.useState("2025");
   const [profileOpen, setProfileOpen] = React.useState(false);
   const [yearsOpen, setYearsOpen] = React.useState(false);
-  const years = ["2025", "2024", "2023", "2022", "2021"];
   const [textVisible, setTextVisible] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // User's birth year (for now hardcoded, but would come from user profile)
+  const birthYear = 2003;
+  const currentYear = new Date().getFullYear();
+
+  // Generate all years between birth year and current year
+  const allYears = React.useMemo(() => {
+    const years = [];
+    for (let year = currentYear; year >= birthYear; year--) {
+      years.push(year.toString());
+    }
+    return years;
+  }, [currentYear, birthYear]);
+
+  // Debug log when yearsWithMemories changes
+  React.useEffect(() => {
+    console.log("CollapsibleSidebar: Years with memories:", yearsWithMemories, "Version:", version);
+  }, [yearsWithMemories, version]);
 
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -29,9 +52,20 @@ export function CollapsibleSidebar() {
     }, 50);
   };
 
+  const handleAddMemoryClick = () => {
+    console.log("Add Memory button clicked");
+    openDialog();
+  };
+
+  const handleYearClick = (year: string) => {
+    console.log("Year clicked:", year);
+    setSelectedYear(year);
+    setYearsOpen(false);
+  };
+
   return (
     <div className="relative my-4 pl-2 z-50" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <div className={`h-full  bg-zinc-950 rounded-2xl text-zinc-400 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"} flex flex-col overflow-hidden`}>
+      <div className={`h-full bg-zinc-950 rounded-2xl text-zinc-400 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"} flex flex-col overflow-hidden`}>
         <div className="relative p-4">
           <div className="flex items-center justify-between">
             <div
@@ -104,26 +138,23 @@ export function CollapsibleSidebar() {
         </div>
 
         <div className="px-4 py-2">
-          <MemoryFormDialog
-            trigger={
-              <button
-                className={`cursor-pointer flex items-center rounded-md bg-zinc-950 text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
-                  collapsed ? "w-8 h-8" : "w-full h-8 "
-                }`}
-              >
-                <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
-                  <Plus className="h-4 w-4" />
-                </div>
-                <span
-                  className={`text-sm text-left whitespace-nowrap transition-all duration-100 ease-in-out ${
-                    textVisible ? "opacity-100 max-w-[200px] ml-1" : "opacity-0 max-w-0 ml-0"
-                  } overflow-hidden`}
-                >
-                  Add Memory
-                </span>
-              </button>
-            }
-          />
+          <button
+            onClick={handleAddMemoryClick}
+            className={`cursor-pointer flex items-center rounded-md bg-zinc-950 text-zinc-400 transition-all duration-100 ease-in-out hover:bg-zinc-900 hover:text-white ${
+              collapsed ? "w-8 h-8" : "w-full h-8 "
+            }`}
+          >
+            <div className="flex h-8 w-8 items-center justify-center flex-shrink-0">
+              <Plus className="h-4 w-4" />
+            </div>
+            <span
+              className={`text-sm text-left whitespace-nowrap transition-all duration-100 ease-in-out ${
+                textVisible ? "opacity-100 max-w-[200px] ml-1" : "opacity-0 max-w-0 ml-0"
+              } overflow-hidden`}
+            >
+              Add Memory
+            </span>
+          </button>
         </div>
 
         <div className="px-4 py-2">
@@ -151,21 +182,25 @@ export function CollapsibleSidebar() {
 
             {yearsOpen && !collapsed && (
               <div className="absolute left-0 right-0 z-[100] mt-1 origin-top-right animate-in fade-in slide-in-from-top-2 duration-150 ease-out">
-                <div className="rounded-md bg-black py-1 shadow-lg">
-                  {years.map((year) => (
-                    <button
-                      key={year}
-                      onClick={() => {
-                        setSelectedYear(year);
-                        setYearsOpen(false);
-                      }}
-                      className={`cursor-pointer flex w-full items-center px-3 py-2 text-sm transition-colors hover:bg-zinc-900 ${
-                        selectedYear === year ? "text-white" : "text-zinc-400"
-                      }`}
-                    >
-                      {year}
-                    </button>
-                  ))}
+                <div className="rounded-md bg-black py-1 shadow-lg max-h-[300px] overflow-y-auto">
+                  {allYears.map((year) => {
+                    const hasMemories = yearsWithMemories.includes(year);
+                    return (
+                      <button
+                        key={year}
+                        onClick={() => {
+                          if (hasMemories) {
+                            handleYearClick(year);
+                          }
+                        }}
+                        className={`cursor-pointer flex w-full items-center px-3 py-2 text-sm transition-colors ${
+                          hasMemories ? `text-white hover:bg-zinc-900 ${selectedYear === year ? "bg-zinc-900" : ""}` : "text-zinc-600 cursor-default"
+                        }`}
+                      >
+                        {year}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

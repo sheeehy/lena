@@ -1,6 +1,8 @@
-// app/layout.tsx (RootLayout)
-
+import type React from "react";
+import { MemoryProvider } from "@/app/memory-context";
 import type { Metadata } from "next";
+import { MemoryDialogProvider } from "./memory-dialog-provider";
+import { YearProvider } from "./year-context";
 import "./globals.css";
 import { Inter } from "next/font/google";
 
@@ -30,19 +32,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           overflow-hidden
           bg-black
           font-sans
-          
         `}
       >
-        {/* Sidebar on the left */}
-        <CollapsibleSidebar />
+        <MemoryProvider>
+          <YearProvider>
+            <MemoryDialogProvider>
+              {/* Sidebar on the left */}
+              <CollapsibleSidebar />
 
-        {/* The rest of the screen for the page’s main content */}
-        <main className="flex-1 overflow-auto relative">
-          {/* If you still want a global overlay or vignette, place it here or inside children 
-          <div className="vignette-overlay pointer-events-none" />
-          */}
-          {children}
-        </main>
+              {/* The rest of the screen for the page's main content */}
+              <main className="flex-1 overflow-auto relative">{children}</main>
+            </MemoryDialogProvider>
+          </YearProvider>
+        </MemoryProvider>
       </body>
     </html>
   );
