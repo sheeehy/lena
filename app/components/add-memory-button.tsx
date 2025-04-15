@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useMemoryDialog } from "./memory-dialog-provider";
+import { useMemoryDialog } from "../context/memory-dialog-provider";
 import { PlusIcon } from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
