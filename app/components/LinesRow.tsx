@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
 import Lenis from "@studio-freight/lenis";
 import Memory from "./Memory";
 import { format } from "date-fns";
@@ -11,12 +12,13 @@ import { stagger, useAnimate } from "framer-motion";
 
 interface LinesRowProps {
   daysData?: DayData[];
+  onAnimationComplete?: () => void;
 }
 
 const MEMORY_OFFSET_Y = "23rem";
 const VISIBLE_DAYS_COUNT = 90; // Approximate number of days visible in viewport
 
-export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
+export default function LinesRow({ daysData: propDaysData, onAnimationComplete }: LinesRowProps) {
   const { daysData: contextDaysData, isLoading, version } = useMemories();
   const { selectedYear } = useYear();
   const [scope, animate] = useAnimate();
@@ -80,6 +82,10 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
         setAnimationComplete(true);
         setHasAnimated(true);
         console.log("Animation sequence complete");
+
+        if (onAnimationComplete) {
+          onAnimationComplete();
+        }
       }
     };
 
@@ -89,7 +95,7 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
     }, 300); // Increased delay for initial render
 
     return () => clearTimeout(timer);
-  }, [animate, scope, selectedYear]);
+  }, [animate, scope, selectedYear, onAnimationComplete]);
 
   // Ensure animation runs on initial render
   useEffect(() => {
@@ -119,6 +125,10 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
             setAnimationComplete(true);
             setHasAnimated(true);
             console.log("Initial animation sequence complete");
+
+            if (onAnimationComplete) {
+              onAnimationComplete();
+            }
           };
 
           animateBars();
@@ -127,7 +137,7 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
 
       return () => clearTimeout(timer);
     }
-  }, [animate, daysData.length, hasAnimated, scope]);
+  }, [animate, daysData.length, hasAnimated, scope, onAnimationComplete]);
 
   // Debug
   useEffect(() => {
@@ -185,7 +195,7 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
   }, [daysData.length]);
 
   // Measure bar positions
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (!containerRef.current || daysData.length === 0) return;
     barRefs.current = barRefs.current.slice(0, daysData.length);
 
@@ -233,7 +243,7 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
   }, []);
 
   if (daysData.length === 0) {
-    return <div className="fixed inset-0 flex items-center justify-center text-white"></div>;
+    return <div className="fixed inset-0 flex items-center justify-center text-white">Loading memories...</div>;
   }
 
   // Determine the tallest bar
@@ -242,7 +252,7 @@ export default function LinesRow({ daysData: propDaysData }: LinesRowProps) {
   return (
     <div
       ref={scrollWrapperRef}
-      className="fixed inset-0 flex items-end overflow-x-auto overflow-y-hidden px-16 pb-12"
+      className="fixed inset-0 flex items-end overflow-x-auto overflow-y-hidden px-16 pb-12 cursor-grab active:cursor-grabbing"
       style={{
         WebkitOverflowScrolling: "touch",
       }}

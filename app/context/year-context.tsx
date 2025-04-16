@@ -1,12 +1,15 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useMemories } from "./memory-context";
 
 interface YearContextType {
   selectedYear: string;
   setSelectedYear: (year: string) => void;
   yearsWithMemories: string[];
+  previousYear: string | null;
+  nextYear: string | null;
 }
 
 const YearContext = createContext<YearContextType | undefined>(undefined);
@@ -21,8 +24,19 @@ export function useYear() {
 
 export function YearProvider({ children }: { children: ReactNode }) {
   const { daysData, version } = useMemories();
-  const [selectedYear, setSelectedYear] = useState<string>("2025");
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [yearsWithMemories, setYearsWithMemories] = useState<string[]>([]);
+  const [previousYear, setPreviousYear] = useState<string | null>(null);
+  const [nextYear, setNextYear] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  // Extract year from URL if available
+  useEffect(() => {
+    const match = pathname.match(/\/memories\/(\d{4})/);
+    if (match && match[1]) {
+      setSelectedYear(match[1]);
+    }
+  }, [pathname]);
 
   // Find years that have memories whenever daysData or version changes
   useEffect(() => {
@@ -36,10 +50,32 @@ export function YearProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const yearsArray = Array.from(years);
+    const yearsArray = Array.from(years).sort((a, b) => parseInt(b) - parseInt(a));
     console.log("Years with memories:", yearsArray);
     setYearsWithMemories(yearsArray);
-  }, [daysData, version]);
 
-  return <YearContext.Provider value={{ selectedYear, setSelectedYear, yearsWithMemories }}>{children}</YearContext.Provider>;
+    // Update previous and next years
+    const currentIndex = yearsArray.indexOf(selectedYear);
+    if (currentIndex !== -1) {
+      setPreviousYear(yearsArray[currentIndex + 1] || null);
+      setNextYear(yearsArray[currentIndex - 1] || null);
+    } else {
+      setPreviousYear(null);
+      setNextYear(null);
+    }
+  }, [daysData, version, selectedYear]);
+
+  return (
+    <YearContext.Provider
+      value={{
+        selectedYear,
+        setSelectedYear,
+        yearsWithMemories,
+        previousYear,
+        nextYear,
+      }}
+    >
+      {children}
+    </YearContext.Provider>
+  );
 }

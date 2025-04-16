@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Calendar, ChevronDown, LogOut, Search, Settings, User, ArrowDownUp, Plus } from "lucide-react";
-import { useMemoryDialog } from "@/app/context/memory-dialog-provider";
-import { useYear } from "@/app/context/year-context";
-import { useMemories } from "@/app/context/memory-context";
+import { useMemoryDialog } from "../context/memory-dialog-provider";
+import { useYear } from "../context/year-context";
+import { useMemories } from "../context/memory-context";
 
 export function CollapsibleSidebar() {
+  const router = useRouter();
   // Initialize dialog context outside the try-catch to ensure hook is always called
   const dialogContext = useMemoryDialog();
   const { openDialog } = dialogContext;
@@ -59,8 +61,15 @@ export function CollapsibleSidebar() {
 
   const handleYearClick = (year: string) => {
     console.log("Year clicked:", year);
+
+    // Update the selected year in context
     setSelectedYear(year);
+
+    // Close the dropdown
     setYearsOpen(false);
+
+    // Navigate to the year page
+    router.push(`/memories/${year}`);
   };
 
   return (

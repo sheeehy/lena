@@ -1,35 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import LinesRow from "./components/LinesRow";
-import { useMemories } from "@/app/context/memory-context";
-import { useYear } from "@/app/context/year-context";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { daysData, version } = useMemories();
-  const { selectedYear } = useYear();
-  const [key, setKey] = useState(`linesrow-${selectedYear}-initial`);
+  const router = useRouter();
 
-  // Filter days data by selected year
-  const filteredDaysData = daysData.filter((day) => {
-    return day.date.startsWith(selectedYear);
-  });
-
-  // Update key when year changes to force remount
   useEffect(() => {
-    setKey(`linesrow-${selectedYear}-${Date.now()}`);
-  }, [selectedYear]);
-
-  // Debug log when filtered data changes
-  useEffect(() => {
-    console.log(`Filtered days for year ${selectedYear}:`, filteredDaysData.length);
-    console.log(`Days with memories:`, filteredDaysData.filter((day) => day.memories.length > 0).length);
-    console.log("Memory context version:", version);
-  }, [filteredDaysData, selectedYear, version]);
+    // Redirect to the memories page
+    router.push("/memories");
+  }, [router]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24 bg-black">
-      <LinesRow key={key} daysData={filteredDaysData} />
-    </main>
+    <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="text-white">Redirecting to memories...</div>
+    </div>
   );
 }
