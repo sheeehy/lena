@@ -17,11 +17,14 @@ import { Form, FormField, FormItem, FormControl } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpToLine, PlusIcon, ChevronRight, AlertCircle, Check, X, RefreshCw } from "lucide-react";
+import { ArrowUpToLine, PlusIcon, ChevronRight, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Memory } from "../types/types";
 import { useMemories } from "../context/memory-context";
 import { useMemoryDialog } from "../context/memory-dialog-provider";
+import { useUser } from "../context/user-context";
+import { validateMemoryDate } from "../utils/date-validation";
+import { toast } from "sonner";
 
 const THEME = {
   bgPrimary: "bg-zinc-950",
@@ -36,10 +39,10 @@ const THEME = {
   errorText: "text-red-500/90",
   successBg: "bg-green-900/50",
   successText: "text-green-100",
-  radiusDialog: "rounded-2xl",
-  radiusButton: "rounded-xl",
-  radiusInput: "rounded-xl",
-  radiusTabs: "rounded-xl",
+  radiusDialog: "rounded-3xl",
+  radiusButton: "rounded-full",
+  radiusInput: "rounded-full",
+  radiusTabs: "rounded-full",
   radiusNotification: "rounded-xl",
 };
 
@@ -138,12 +141,6 @@ const contentVariants = {
   exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
 };
 
-type NotificationType = "success" | "error" | null;
-interface Notification {
-  type: NotificationType;
-  message: string;
-}
-
 interface MemoryFormDialogProps {
   trigger?: React.ReactNode;
   onSuccess?: () => void;
@@ -151,7 +148,8 @@ interface MemoryFormDialogProps {
 
 export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialogProps) {
   const { daysData, addMemory } = useMemories();
-  const { closeDialog } = useMemoryDialog();
+  const { closeDialog, isOpen } = useMemoryDialog();
+  const { user } = useUser();
 
   // Inject global style resets
   useEffect(() => {
@@ -168,8 +166,8 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
   const [currentStep, setCurrentStep] = useState<Step>("date");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
-  const [notification, setNotification] = useState<Notification | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [dateValidationError, setDateValidationError] = useState<string | null>(null);
 
   // Refs to focus inputs as we move steps
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -194,24 +192,44 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
 
   // We track if each step has an error
   const stepErrors = {
-    date: !!errors.date,
-    title: !!errors.title,
-    description: !!errors.description,
-    location: !!errors.location,
+    date: Boolean(errors.date?.message || dateValidationError),
+    title: Boolean(errors.title?.message),
+    description: Boolean(errors.description?.message),
+    location: false,
     image: false,
   };
 
   // Reset the form whenever the dialog is opened
   useEffect(() => {
-    if (open) {
-      reset();
+    // Reset form when dialog is opened via the open state or via the context
+    if (open || isOpen) {
+      // Reset the form with explicit default values to ensure complete reset
+      reset({
+        title: "",
+        description: "",
+        date: format(new Date(), "dd MM yyyy"),
+        location: "",
+      });
       setSelectedFile(null);
       setPreviewUrl("");
       setCurrentStep("date");
-      setNotification(null);
       setIsUploading(false);
+      setDateValidationError(null);
     }
-  }, [open, reset]);
+  }, [open, isOpen, reset]);
+
+  // Also add a reset when the component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up form state when component unmounts
+      reset({
+        title: "",
+        description: "",
+        date: format(new Date(), "dd MM yyyy"),
+        location: "",
+      });
+    };
+  }, [reset]);
 
   // Focus inputs on step changes
   useEffect(() => {
@@ -244,19 +262,54 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
     } else if (value.length > 2) {
       value = `${value.slice(0, 2)} ${value.slice(2)}`;
     }
-    setValue("date", value, { shouldValidate: false });
+
+    // Only clear validation errors if the user is actively changing the value
+    if (value !== form.getValues("date")) {
+      setDateValidationError(null);
+    }
+
+    setValue("date", value, {
+      shouldValidate: false, // Don't validate on every keystroke
+    });
   };
 
+  // Only validate on blur, not during typing
   const handleDateBlur = async () => {
-    // Validate the date format
-    await triggerValidation("date");
-  };
+    const dateValue = form.getValues("date");
 
-  // Show a global banner notification
-  const showNotification = (type: NotificationType, message: string) => {
-    setNotification({ type, message });
-    if (type === "success") {
-      setTimeout(() => setNotification(null), 3000);
+    // Only validate if we have a complete date
+    if (dateValue && dateValue.length === 10) {
+      // First validate the format
+      const formatValid = await triggerValidation("date");
+
+      if (!formatValid) {
+        // Don't show toast here, we'll handle it during navigation
+        return;
+      }
+
+      // Then check birth date if we have a user
+      if (user) {
+        try {
+          // Parse the date from DD MM YYYY format
+          const dateParts = dateValue.split(" ");
+          const day = Number.parseInt(dateParts[0], 10);
+          const month = Number.parseInt(dateParts[1], 10) - 1;
+          const year = Number.parseInt(dateParts[2], 10);
+          const dateObj = new Date(year, month, day);
+
+          // Validate against birth date
+          const validation = validateMemoryDate(dateObj, user.birthDate);
+
+          if (!validation.isValid) {
+            setDateValidationError(validation.errorMessage || "Invalid date");
+            // Don't show toast here, we'll handle it during navigation
+          } else {
+            setDateValidationError(null);
+          }
+        } catch (error) {
+          console.error("Date validation error:", error);
+        }
+      }
     }
   };
 
@@ -290,6 +343,20 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
       const month = Number.parseInt(dateParts[1], 10) - 1;
       const year = Number.parseInt(dateParts[2], 10);
       const dateObj = new Date(year, month, day);
+
+      // Validate against birth date one more time
+      if (user) {
+        const validation = validateMemoryDate(dateObj, user.birthDate);
+        if (!validation.isValid) {
+          toast.error("Date validation error:", {
+            description: validation.errorMessage || "Invalid date",
+            duration: 3000,
+          });
+          setCurrentStep("date"); // Go back to date step
+          return;
+        }
+      }
+
       const dateKey = format(dateObj, "yyyy-MM-dd");
 
       // Attempt image upload if provided
@@ -297,8 +364,17 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
       if (selectedFile) {
         if (!previewUrl.startsWith("https://")) {
           setIsUploading(true);
-          const path = await uploadImage(selectedFile, "memories");
-          uploadedImageUrl = getPublicUrl("memories", path);
+          try {
+            const path = await uploadImage(selectedFile, "memories");
+            uploadedImageUrl = getPublicUrl("memories", path);
+          } catch (error) {
+            toast.error("Image upload failed", {
+              description: "We couldn't upload your image. Please try again.",
+              duration: 4000,
+            });
+            setIsUploading(false);
+            return;
+          }
           setIsUploading(false);
         } else {
           uploadedImageUrl = previewUrl;
@@ -330,25 +406,29 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
         throw new Error(`Failed to create memory: ${res.status} ${res.statusText} ${errorData.error || ""}`);
       }
 
-      // Success
-      showNotification("success", "Your memory has been saved successfully.");
-      setTimeout(() => {
-        if (onSuccess) {
-          onSuccess();
-        } else if (closeDialog) {
-          closeDialog();
-        } else {
-          setOpen(false);
-        }
-      }, 1500);
+      // Show success toast
+      toast.success("Memory saved", {
+        description: `"${values.title}" was added to your memories.`,
+        duration: 4000,
+      });
+
+      // Close dialog immediately
+      if (onSuccess) {
+        onSuccess();
+      } else if (closeDialog) {
+        closeDialog();
+      } else {
+        setOpen(false);
+      }
     } catch (err) {
-      showNotification("error", "We couldn't save your memory. Please try again.");
+      // Show error toast
+      toast.error("Failed to save memory", {
+        description: "Please try again later.",
+        duration: 5000,
+      });
       console.error("Error creating memory:", err);
     }
   }
-
-  // Helper to handle "Continue" or "Add Memory" button
-  const isLastStep = currentStep === STEPS[STEPS.length - 1];
 
   const handleNext = async () => {
     if (currentStep === "image") {
@@ -356,33 +436,62 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
       return;
     }
 
+    // Validate the current step before proceeding
+    let isValid = false;
+    let errorMessage = "";
+
     if (currentStep === "date") {
-      // Validate date format
-      const validFormat = await triggerValidation("date");
-      if (!validFormat) return;
+      // First validate the format
+      isValid = await triggerValidation("date");
 
-      // Then check if that date is at max capacity (8)
-      const dateVal = form.getValues("date");
-      const [dd, mm, yyyy] = dateVal.split(" ");
-      const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-      const dateKey = format(dateObj, "yyyy-MM-dd");
-      const existingDay = daysData.find((d) => d.date === dateKey);
+      if (!isValid) {
+        errorMessage = errors.date?.message?.toString() || "Please enter a valid date";
+      }
+      // If format is valid but we have a birth date error, block progression
+      else if (dateValidationError) {
+        isValid = false;
+        errorMessage = dateValidationError;
+      }
+      // If valid, check for max memories on this date
+      else {
+        const dateVal = form.getValues("date");
+        const [dd, mm, yyyy] = dateVal.split(" ");
+        const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+        const dateKey = format(dateObj, "yyyy-MM-dd");
+        const existingDay = daysData.find((d) => d.date === dateKey);
 
-      if (existingDay && existingDay.memories.length >= 8) {
-        // Set an error in the "date" form field so we don't proceed
-        setError("date", {
-          type: "manual",
-          message: `This date has the maximum number of memories.`,
-        });
-        return;
+        if (existingDay && existingDay.memories.length >= 8) {
+          isValid = false;
+          errorMessage = "This date has the maximum number of memories";
+        } else {
+          isValid = true;
+        }
+      }
+    } else if (currentStep === "title") {
+      isValid = await triggerValidation("title");
+      if (!isValid) {
+        errorMessage = "Please enter a title for your memory";
+      }
+    } else if (currentStep === "description") {
+      isValid = await triggerValidation("description");
+      if (!isValid) {
+        errorMessage = "Please enter a description for your memory";
       }
     } else {
-      // Validate the step's field
-      const validField = await triggerValidation(currentStep as any);
-      if (!validField) return;
+      // For location, it's optional
+      isValid = true;
     }
 
-    // Move to next step
+    // Show error toast if validation failed
+    if (!isValid && errorMessage) {
+      toast.error("Please fix the following issue:", {
+        description: errorMessage,
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Only proceed if validation passed
     const idx = STEPS.indexOf(currentStep);
     setCurrentStep(STEPS[idx + 1]);
   };
@@ -392,110 +501,80 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
     const newIndex = STEPS.indexOf(step);
     const currentIndex = STEPS.indexOf(currentStep);
 
-    // If user tries to move backward, let them
+    // If moving backward, allow it without validation
     if (newIndex < currentIndex) {
       setCurrentStep(step);
       return;
     }
 
-    // If user tries to move forward, validate intermediate steps
-    if (currentIndex === 0) {
-      // We are on the date step
-      const validFormat = await triggerValidation("date");
-      if (!validFormat) return;
+    // If trying to move forward, validate all steps in between
+    let canProceed = true;
+    let errorMessage = "";
+    let errorStep = "";
 
-      const dateVal = form.getValues("date");
-      const [dd, mm, yyyy] = dateVal.split(" ");
-      const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-      const dateKey = format(dateObj, "yyyy-MM-dd");
-      const existingDay = daysData.find((d) => d.date === dateKey);
+    // Validate all steps from current to target
+    for (let i = currentIndex; i < newIndex; i++) {
+      const stepToValidate = STEPS[i];
 
-      if (existingDay && existingDay.memories.length >= 8) {
-        setError("date", {
-          type: "manual",
-          message: `This date has the maximum number of memories.`,
-        });
-        return;
-      }
-      if (newIndex === 1) {
-        setCurrentStep("title");
-        return;
-      }
-      // Now we handle subsequent steps
-      setCurrentStep("title");
-      const validTitle = await triggerValidation("title");
-      if (!validTitle) return;
+      if (stepToValidate === "date") {
+        // Special handling for date
+        const dateValid = await triggerValidation("date");
+        if (!dateValid) {
+          canProceed = false;
+          errorMessage = errors.date?.message?.toString() || "Please enter a valid date";
+          errorStep = "Date";
+          break;
+        }
 
-      if (newIndex === 2) {
-        setCurrentStep("description");
-        return;
-      }
-      setCurrentStep("description");
-      const validDesc = await triggerValidation("description");
-      if (!validDesc) return;
+        if (dateValidationError) {
+          canProceed = false;
+          errorMessage = dateValidationError;
+          errorStep = "Date";
+          break;
+        }
 
-      if (newIndex === 3) {
-        setCurrentStep("location");
-        return;
-      }
-      setCurrentStep("location");
-      const validLoc = await triggerValidation("location");
-      if (!validLoc) return;
+        // Check max memories
+        const dateVal = form.getValues("date");
+        const [dd, mm, yyyy] = dateVal.split(" ");
+        const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+        const dateKey = format(dateObj, "yyyy-MM-dd");
+        const existingDay = daysData.find((d) => d.date === dateKey);
 
-      if (newIndex === 4) {
-        setCurrentStep("image");
-        return;
-      }
-    } else if (currentIndex === 1) {
-      const validTitle = await triggerValidation("title");
-      if (!validTitle) return;
-
-      if (newIndex === 2) {
-        setCurrentStep("description");
-        return;
-      }
-      setCurrentStep("description");
-      const validDesc = await triggerValidation("description");
-      if (!validDesc) return;
-
-      if (newIndex === 3) {
-        setCurrentStep("location");
-        return;
-      }
-      setCurrentStep("location");
-      const validLoc = await triggerValidation("location");
-      if (!validLoc) return;
-
-      if (newIndex === 4) {
-        setCurrentStep("image");
-        return;
-      }
-    } else if (currentIndex === 2) {
-      const validDesc = await triggerValidation("description");
-      if (!validDesc) return;
-
-      if (newIndex === 3) {
-        setCurrentStep("location");
-        return;
-      }
-      setCurrentStep("location");
-      const validLoc = await triggerValidation("location");
-      if (!validLoc) return;
-
-      if (newIndex === 4) {
-        setCurrentStep("image");
-        return;
-      }
-    } else if (currentIndex === 3) {
-      const validLoc = await triggerValidation("location");
-      if (!validLoc) return;
-
-      if (newIndex === 4) {
-        setCurrentStep("image");
-        return;
+        if (existingDay && existingDay.memories.length >= 8) {
+          canProceed = false;
+          errorMessage = "This date has the maximum number of memories";
+          errorStep = "Date";
+          break;
+        }
+      } else if (stepToValidate === "title") {
+        const fieldValid = await triggerValidation("title");
+        if (!fieldValid) {
+          canProceed = false;
+          errorMessage = "Please enter a title for your memory";
+          errorStep = "Title";
+          break;
+        }
+      } else if (stepToValidate === "description") {
+        const fieldValid = await triggerValidation("description");
+        if (!fieldValid) {
+          canProceed = false;
+          errorMessage = "Please enter a description for your memory";
+          errorStep = "Description";
+          break;
+        }
       }
     }
 
+    // Show error toast if validation failed
+    if (!canProceed && errorMessage) {
+      toast.error(`Issue with ${errorStep}:`, {
+        description: errorMessage,
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Only proceed if all validations passed
     setCurrentStep(step);
   }
 
@@ -528,27 +607,59 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       onChange={handleDateChange}
                       onBlur={handleDateBlur}
                       className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 w-full`}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && field.value.length === 10) {
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter") {
                           e.preventDefault();
-                          handleNext();
+
+                          // First validate the format
+                          const isFormatValid = await triggerValidation("date");
+
+                          if (!isFormatValid) {
+                            toast.error("Date format error", {
+                              description: errors.date?.message?.toString() || "Please enter a valid date",
+                              duration: 3000,
+                            });
+                            return;
+                          }
+
+                          // Manually check birth date validation
+                          const dateVal = field.value;
+                          const [dd, mm, yyyy] = dateVal.split(" ");
+                          const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+
+                          // Validate against birth date
+                          if (user) {
+                            const validation = validateMemoryDate(dateObj, user.birthDate);
+                            if (!validation.isValid) {
+                              setDateValidationError(validation.errorMessage || "Invalid date");
+                              toast.error("Date validation error", {
+                                description: validation.errorMessage || "Invalid date",
+                                duration: 3000,
+                              });
+                              return;
+                            }
+                          }
+
+                          // Check for max memories
+                          const dateKey = format(dateObj, "yyyy-MM-dd");
+                          const existingDay = daysData.find((d) => d.date === dateKey);
+
+                          if (existingDay && existingDay.memories.length >= 8) {
+                            toast.error("Maximum memories reached", {
+                              description: "This date already has the maximum number of memories",
+                              duration: 3000,
+                            });
+                            return;
+                          }
+
+                          // If all validation passes, proceed to next step
+                          const idx = STEPS.indexOf(currentStep);
+                          setCurrentStep(STEPS[idx + 1]);
                         }
                       }}
                     />
 
-                    <AnimatePresence mode="popLayout">
-                      {errors.date && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="text-red-500 text-sm"
-                        >
-                          {errors.date.message?.toString()}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Error handling moved to toast notifications */}
 
                     <p className={`${THEME.textSecondary} text-sm`}>
                       Not sure?
@@ -575,26 +686,26 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       {...field}
                       ref={titleInputRef}
                       className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 w-full`}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && field.value.trim()) {
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter") {
                           e.preventDefault();
-                          handleNext();
+                          const isValid = await triggerValidation("title");
+
+                          if (!isValid) {
+                            toast.error("Title required", {
+                              description: "Please enter a title for your memory",
+                              duration: 3000,
+                            });
+                            return;
+                          }
+
+                          // If validation passes, proceed to next step
+                          const idx = STEPS.indexOf(currentStep);
+                          setCurrentStep(STEPS[idx + 1]);
                         }
                       }}
                     />
-                    <AnimatePresence mode="popLayout">
-                      {errors.title && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="text-red-500 text-sm"
-                        >
-                          {errors.title.message?.toString()}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Error handling moved to toast notifications */}
                   </div>
                 </FormControl>
               </FormItem>
@@ -617,26 +728,26 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       {...field}
                       ref={descriptionInputRef}
                       className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} min-h-[150px] text-sm w-full resize-none whitespace-pre-wrap`}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && e.ctrlKey && field.value.trim()) {
+                      onKeyDown={async (e) => {
+                        if (e.key === "Enter" && e.ctrlKey) {
                           e.preventDefault();
-                          handleNext();
+                          const isValid = await triggerValidation("description");
+
+                          if (!isValid) {
+                            toast.error("Description required", {
+                              description: "Please enter a description for your memory",
+                              duration: 3000,
+                            });
+                            return;
+                          }
+
+                          // If validation passes, proceed to next step
+                          const idx = STEPS.indexOf(currentStep);
+                          setCurrentStep(STEPS[idx + 1]);
                         }
                       }}
                     />
-                    <AnimatePresence mode="popLayout">
-                      {errors.description && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -8 }}
-                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          className="text-red-500 text-sm"
-                        >
-                          {errors.description.message?.toString()}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Error handling moved to toast notifications */}
                   </div>
                 </FormControl>
               </FormItem>
@@ -662,23 +773,13 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            handleNext();
+                            // Location is optional, so we can proceed directly
+                            const idx = STEPS.indexOf(currentStep);
+                            setCurrentStep(STEPS[idx + 1]);
                           }
                         }}
                       />
-                      <AnimatePresence mode="popLayout">
-                        {errors.location && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -8 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                            className="text-red-500 text-sm mt-1"
-                          >
-                            {errors.location.message?.toString()}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {/* Error handling moved to toast notifications */}
                     </div>
                   </div>
                 </FormControl>
@@ -754,6 +855,9 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
     }
   }
 
+  // Determine if it's the last step
+  const isLastStep = currentStep === STEPS[STEPS.length - 1];
+
   // The full dialog content for the wizard
   const dialogContent = (
     <DialogContent className="p-0 border-0 bg-transparent">
@@ -810,8 +914,9 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                   }}
                   transition={{
                     type: "spring",
-                    stiffness: 400,
+                    stiffness: 300,
                     damping: 30,
+                    mass: 1,
                   }}
                 />
               </div>
@@ -819,7 +924,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
               {/* Close button */}
               <motion.button
                 type="button"
-                onClick={handleClose}
+                onClick={closeDialog}
                 className={cn(
                   "flex items-center justify-center h-8 w-8 rounded-full",
                   THEME.textSecondary,
@@ -837,16 +942,13 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
             <div className="relative flex-1 overflow-hidden">
               <AnimatePresence mode="wait">
                 <motion.div key={currentStep} variants={contentVariants} initial="hidden" animate="visible" exit="exit" className="absolute inset-0 px-6 py-6 overflow-y-auto">
-                  {/* Show any banner notification */}
-                  <AnimatePresence>{notification && <NotificationBanner notification={notification} setNotification={setNotification} />}</AnimatePresence>
-
                   {renderStepContent()}
                 </motion.div>
               </AnimatePresence>
             </div>
 
             {/* Footer */}
-            <div className={cn("w-full flex items-center justify-center py-4 px-6", THEME.bgSecondary)} style={{ height: FOOTER_HEIGHT }}>
+            <div className={cn("w-full flex items-center justify-center py-4 px-6 ", THEME.bgSecondary)} style={{ height: FOOTER_HEIGHT }}>
               <Button
                 type="button"
                 onClick={handleNext}
@@ -886,32 +988,15 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
     );
   }
 
-  return dialogContent;
-}
-
-// Notification banner with a smooth spring in/out
-function NotificationBanner({ notification, setNotification }: { notification: Notification | null; setNotification: React.Dispatch<React.SetStateAction<Notification | null>> }) {
-  if (!notification) return null;
-
+  // Otherwise use the context's isOpen state
   return (
-    <AnimatePresence>
-      <motion.div
-        key="notification"
-        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        className={cn(
-          `px-4 py-3 mb-4 ${THEME.radiusNotification} flex items-center justify-between transition-colors`,
-          notification.type === "success" ? `${THEME.successBg} ${THEME.successText}` : `${THEME.errorBg} ${THEME.errorText}`
-        )}
-      >
-        <div className="flex items-center gap-2">
-          {notification.type === "success" ? <Check className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
-          <span className="ml-2">{notification.message}</span>
-        </div>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full focus:ring-0 focus:ring-offset-0" onClick={() => setNotification(null)} />
-      </motion.div>
-    </AnimatePresence>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(newOpen) => {
+        if (!newOpen) closeDialog();
+      }}
+    >
+      {dialogContent}
+    </Dialog>
   );
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Calendar, ChevronDown, LogOut, Search, Settings, User, ArrowDownUp, Plus } from "lucide-react";
 import { useMemoryDialog } from "../context/memory-dialog-provider";
 import { useYear } from "../context/year-context";
@@ -106,10 +107,13 @@ export function CollapsibleSidebar() {
           {profileOpen && !collapsed && (
             <div className="absolute left-4 right-4 z-[100] mt-4 origin-top-right animate-in fade-in slide-in-from-top-2 duration-150 ease-out">
               <div className="rounded-md bg-black py-1 shadow-lg">
-                <button className="cursor-pointer flex w-full items-center gap-2 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white">
+                <Link
+                  href="/profile"
+                  className="cursor-pointer flex w-full items-center gap-2 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white"
+                >
                   <User className="h-4 w-4" />
                   <span>Profile</span>
-                </button>
+                </Link>
                 <button className="cursor-pointer flex w-full items-center gap-2 px-4 py-2 text-sm text-zinc-400 transition-colors hover:bg-zinc-900 hover:text-white">
                   <Settings className="h-4 w-4" />
                   <span>Settings</span>
