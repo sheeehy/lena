@@ -97,9 +97,6 @@ const STEP_HEIGHTS: Record<Step, number> = {
 const NAV_HEIGHT = 56;
 const FOOTER_HEIGHT = 73;
 
-// Container top offset
-const DIALOG_TOP_POSITION = "0vh";
-
 // Helper to compute container height based on step
 function getTotalHeight(step: Step): number {
   return NAV_HEIGHT + STEP_HEIGHTS[step] + FOOTER_HEIGHT;
@@ -727,7 +724,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       placeholder="Describe your memory..."
                       {...field}
                       ref={descriptionInputRef}
-                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} min-h-[150px] text-sm w-full resize-none whitespace-pre-wrap`}
+                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 rounded-3xl min-h-[150px] text-sm w-full resize-none whitespace-pre-wrap`}
                       onKeyDown={async (e) => {
                         if (e.key === "Enter" && e.ctrlKey) {
                           e.preventDefault();
@@ -800,14 +797,14 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3 }}
                   {...(getRootProps() as any)}
-                  className={`aspect-square w-full max-w-[300px] mx-auto ${THEME.bgInput} ${THEME.radiusInput} overflow-hidden flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out outline outline-dotted outline-4 outline-offset-2 outline-zinc-900 hover:scale-105`}
+                  className={`aspect-square w-full max-w-[300px] mx-auto ${THEME.bgInput} rounded-3xl overflow-hidden flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out outline outline-dotted outline-4 outline-offset-2 outline-zinc-900 hover:scale-105`}
                 >
                   <input {...getInputProps()} />
                   {isDragActive ? (
                     <motion.div
                       initial={{ scale: 0.95 }}
                       animate={{ scale: 1 }}
-                      className={`aspect-square w-full max-w-[300px] mx-auto ${THEME.bgInput} ${THEME.radiusInput} overflow-hidden flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out`}
+                      className={`aspect-square w-full max-w-[300px] mx-auto ${THEME.bgInput} rounded-3xl overflow-hidden flex items-center justify-center cursor-pointer transition-all duration-200 ease-in-out`}
                     >
                       <p className={THEME.textPrimary}>Drop to upload</p>
                     </motion.div>
@@ -866,7 +863,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
         animate={containerVisible(currentStep)}
         exit={containerExit}
         style={{ transformOrigin: "top center" }}
-        className={cn(THEME.bgPrimary, THEME.radiusDialog, "shadow-xl overflow-hidden w-[550px] max-w-[90vw] fixed z-[9999]", "left-1/2 -translate-x-1/2 -top-36")}
+        className={cn(THEME.bgPrimary, THEME.radiusDialog, "shadow-xl overflow-hidden w-[550px] max-w-[90vw] fixed z-[9999]", "left-1/2 -translate-x-1/2 -top-50")}
         onClick={(e) => e.stopPropagation()}
       >
         <DialogTitle className="sr-only">Memory Form</DialogTitle>
