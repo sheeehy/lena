@@ -1,3 +1,4 @@
+//layout.tsx
 import type React from "react";
 import { MemoryProvider } from "@/app/context/memory-context";
 import type { Metadata } from "next";

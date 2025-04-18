@@ -1,3 +1,5 @@
+//memories/layout.tsx
+
 import type { ReactNode } from "react";
 import { CollapsibleSidebar } from "../components/CollapsibleSidebar";
 

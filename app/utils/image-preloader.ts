@@ -1,3 +1,4 @@
+//utils/image-preloader.ts
 /**
  * Utility for preloading images
  */

@@ -1,3 +1,4 @@
+//types/types.ts
 // Shared types for the memory timeline application
 export interface Memory {
     id: string

@@ -1,3 +1,5 @@
+//components/LinesRow.tsx
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";

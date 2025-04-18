@@ -1,3 +1,4 @@
+//memories/[year]/loading.tsx
 "use client";
 
 export default function Loading() {
