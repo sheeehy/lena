@@ -252,17 +252,6 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
     return () => clearTimeout(focusTimer);
   }, [currentStep]);
 
-  // Reset button state after success
-  useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    if (buttonState === "success") {
-      timeout = setTimeout(() => {
-        setButtonState("idle");
-      }, 2000);
-    }
-    return () => clearTimeout(timeout);
-  }, [buttonState]);
-
   // Restrict date input to "DD MM YYYY"
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, "");
@@ -423,14 +412,22 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
         duration: 4000,
       });
 
+      // Keep the success state visible until dialog closes
+      setButtonState("success");
+
       // Close dialog immediately
-      if (onSuccess) {
-        onSuccess();
-      } else if (closeDialog) {
-        closeDialog();
-      } else {
-        setOpen(false);
-      }
+      // Wait a moment to show the success state before closing
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess();
+        } else if (closeDialog) {
+          closeDialog();
+        } else {
+          setOpen(false);
+        }
+        // Reset button state after dialog closes
+        setButtonState("idle");
+      }, 1500);
     } catch (err) {
       // Show error toast
       toast.error("Failed to save memory", {
@@ -602,6 +599,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
 
   // Closing
   const handleClose = () => {
+    setButtonState("idle");
     if (onSuccess) {
       onSuccess();
     } else {
