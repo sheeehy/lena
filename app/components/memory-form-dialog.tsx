@@ -1,5 +1,3 @@
-//components/memory-form-dialog.tsx
-
 "use client";
 
 import type React from "react";
@@ -19,7 +17,7 @@ import { Form, FormField, FormItem, FormControl } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpToLine, PlusIcon, ChevronRight, X, RefreshCw } from "lucide-react";
+import { ArrowUpToLine, PlusIcon, ChevronRight, X, RefreshCw, Loader2, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Memory } from "../types/types";
 import { useMemories } from "../context/memory-context";
@@ -96,7 +94,7 @@ const STEP_HEIGHTS: Record<Step, number> = {
   image: 390,
 };
 
-const NAV_HEIGHT = 56;
+const NAV_HEIGHT = 68;
 const FOOTER_HEIGHT = 73;
 
 // Helper to compute container height based on step
@@ -167,6 +165,8 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
   const [previewUrl, setPreviewUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [dateValidationError, setDateValidationError] = useState<string | null>(null);
+  // Fix: Move the isLastStep state inside the component
+  const [buttonState, setButtonState] = useState<"idle" | "loading" | "success">("idle");
 
   // Refs to focus inputs as we move steps
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -214,6 +214,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
       setCurrentStep("date");
       setIsUploading(false);
       setDateValidationError(null);
+      setButtonState("idle");
     }
   }, [open, isOpen, reset]);
 
@@ -250,6 +251,17 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
     }, 300);
     return () => clearTimeout(focusTimer);
   }, [currentStep]);
+
+  // Reset button state after success
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (buttonState === "success") {
+      timeout = setTimeout(() => {
+        setButtonState("idle");
+      }, 2000);
+    }
+    return () => clearTimeout(timeout);
+  }, [buttonState]);
 
   // Restrict date input to "DD MM YYYY"
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -431,7 +443,18 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
 
   const handleNext = async () => {
     if (currentStep === "image") {
-      handleSubmit(onSubmit)();
+      // Set loading state before submitting
+      setButtonState("loading");
+      try {
+        await handleSubmit(onSubmit)();
+        // Set success state after successful submission
+        setButtonState("success");
+        // The success state will be reset by the useEffect
+      } catch (error) {
+        // Reset to idle state if there's an error
+        setButtonState("idle");
+        console.error("Error submitting form:", error);
+      }
       return;
     }
 
@@ -605,7 +628,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       ref={dateInputRef}
                       onChange={handleDateChange}
                       onBlur={handleDateBlur}
-                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 w-full`}
+                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 pl-4 w-full`}
                       onKeyDown={async (e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -661,8 +684,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                     {/* Error handling moved to toast notifications */}
 
                     <p className={`${THEME.textSecondary} text-sm`}>
-                      Not sure?
-                      <span className="text-zinc-300 ml-1 cursor-pointer hover:text-white transition ease-in-out">date range</span>
+                      Not sure? add a<span className="text-zinc-300 ml-1.5 cursor-pointer hover:text-white transition ease-in-out">date range</span>
                     </p>
                   </div>
                 </FormControl>
@@ -684,7 +706,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       placeholder="Memory title"
                       {...field}
                       ref={titleInputRef}
-                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 w-full`}
+                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 pl-4  w-full`}
                       onKeyDown={async (e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -726,7 +748,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                       placeholder="Describe your memory..."
                       {...field}
                       ref={descriptionInputRef}
-                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 rounded-3xl min-h-[150px] text-sm w-full resize-none whitespace-pre-wrap`}
+                      className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 rounded-3xl min-h-[150px] pl-4 py-3 text-sm w-full resize-none break-all`}
                       onKeyDown={async (e) => {
                         if (e.key === "Enter" && e.ctrlKey) {
                           e.preventDefault();
@@ -768,7 +790,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                         placeholder="Where was this?"
                         {...field}
                         ref={locationInputRef}
-                        className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 w-full`}
+                        className={`${THEME.bgInput} ${THEME.textPrimary} placeholder:${THEME.textMuted} focus:outline-none border-0 ${THEME.radiusInput} text-sm py-6 pl-4 w-full`}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
@@ -873,7 +895,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
         <Form {...form}>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col w-full h-full">
             {/* Step nav bar */}
-            <div className={cn("w-full flex items-center px-1", THEME.bgSecondary)} style={{ height: NAV_HEIGHT }}>
+            <div className={cn("w-full flex items-center px-3", THEME.bgSecondary)} style={{ height: NAV_HEIGHT }}>
               <div className="flex-1 flex relative">
                 {STEPS.map((step) => (
                   <motion.button
@@ -881,7 +903,7 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
                     type="button"
                     onClick={() => handleStepClick(step)}
                     className={cn(
-                      "w-1/5 flex items-center justify-center text-xs font-medium relative py-4 px-4 cursor-pointer focus:outline-none rounded-xl transition-colors duration-300",
+                      "w-1/5 flex items-center justify-center text-xs font-medium relative py-4 px-2 cursor-pointer focus:outline-none rounded-xl transition-colors duration-300",
                       currentStep === step ? THEME.textPrimary : stepErrors[step] ? THEME.errorText : THEME.textMuted,
                       currentStep !== step && "hover:text-white"
                     )}
@@ -940,36 +962,58 @@ export default function MemoryFormDialog({ trigger, onSuccess }: MemoryFormDialo
 
             <div className="relative flex-1 overflow-hidden">
               <AnimatePresence mode="wait">
-                <motion.div key={currentStep} variants={contentVariants} initial="hidden" animate="visible" exit="exit" className="absolute inset-0 px-6 py-6 overflow-y-auto">
+                <motion.div key={currentStep} variants={contentVariants} initial="hidden" animate="visible" exit="exit" className="absolute inset-0 px-4 py-6 overflow-y-auto">
                   {renderStepContent()}
                 </motion.div>
               </AnimatePresence>
             </div>
 
             {/* Footer */}
-            <div className={cn("w-full flex items-center justify-center py-4 px-6 ", THEME.bgSecondary)} style={{ height: FOOTER_HEIGHT }}>
-              <Button
+            <div className={cn("w-full flex items-end justify-end py-4 px-4 ", THEME.bgSecondary)} style={{ height: FOOTER_HEIGHT }}>
+              <motion.button
                 type="button"
                 onClick={handleNext}
                 disabled={isUploading}
                 className={cn(
-                  "bg-white w-full cursor-pointer text-black transition-transform duration-300 ease-[cubic-bezier(0.175,0.885,0.320,1.275)]",
+                  "bg-white w-full py-2 cursor-pointer text-black transition-transform duration-300 ease-[cubic-bezier(0.175,0.885,0.320,1.275)]",
                   THEME.radiusButton,
                   "flex items-center justify-center focus:ring-0 focus:ring-offset-0 hover:scale-[1.02]"
                 )}
               >
-                {isLastStep ? (
-                  <div className="flex items-center">
-                    <span>Add Memory</span>
-                    <PlusIcon className="ml-2 h-4 w-4 translate-y-[0.5px]" />
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <span>Continue</span>
-                    <ChevronRight className="ml-2 h-4 w-4 translate-y-[0.5px]" />
-                  </div>
-                )}
-              </Button>
+                <AnimatePresence mode="wait">
+                  {buttonState === "loading" ? (
+                    <motion.div
+                      key="loading"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center"
+                    >
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </motion.div>
+                  ) : buttonState === "success" ? (
+                    <motion.div
+                      key="success"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="flex items-center text-green-600"
+                    >
+                      <CheckCircle className="h-5 w-5" />
+                    </motion.div>
+                  ) : isLastStep ? (
+                    <motion.div key="last" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center">
+                      <span>Add Memory</span>
+                      <PlusIcon className="ml-2 h-4 w-4 translate-y-[2px]" />
+                    </motion.div>
+                  ) : (
+                    <motion.div key="continue" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center">
+                      <span>Continue</span>
+                      <ChevronRight className="ml-2 h-4 w-4 translate-y-[2px]" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
             </div>
           </form>
         </Form>
