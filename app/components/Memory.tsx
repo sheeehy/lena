@@ -32,6 +32,7 @@ export default function Memory({
 
   // Use state but with no transitions or effects
   const [selectedMemoryIndex, setSelectedMemoryIndex] = useState(0);
+  const [imageLoading, setImageLoading] = useState(true);
 
   // Reset index when day changes - only essential effect
   useEffect(() => {
@@ -177,7 +178,34 @@ export default function Memory({
           >
             {memory?.image ? (
               <div className="relative w-full h-full">
-                <Image src={memory.image || "/placeholder.svg"} alt={memory.title || "Memory image"} fill sizes="400px" priority={true} className="object-cover" quality={85} />
+                <Image
+                  src={memory.image || "/placeholder.svg"}
+                  alt={memory.title || "Memory image"}
+                  fill
+                  sizes="400px"
+                  priority={true}
+                  className="object-cover"
+                  quality={85}
+                  onLoadingComplete={() => setImageLoading(false)}
+                />
+                <div
+                  className="absolute inset-0 flex items-center justify-center bg-zinc-900/80 transition-opacity duration-300"
+                  style={{
+                    opacity: imageLoading ? 1 : 0,
+                    pointerEvents: imageLoading ? "auto" : "none",
+                  }}
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Number.POSITIVE_INFINITY,
+                      ease: "linear",
+                    }}
+                  >
+                    <div className="w-10 h-10 border-t-2 border-b-2 border-white rounded-full" />
+                  </motion.div>
+                </div>
               </div>
             ) : (
               <div className="text-zinc-500 flex items-center justify-center h-full w-full">No image</div>
